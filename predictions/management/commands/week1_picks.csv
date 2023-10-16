@@ -1,0 +1,13 @@
+Player,Week,Game,SelectedTeam,IsLock,Spread,Points
+NameJFK,1,BAL vs HOU,HOU,FALSE,10,0
+NameJFK,1,CLE vs CIN,CLE,FALSE,2.5,1
+NameJFK,1,NE vs PHI,NE,FALSE,4,0
+HeckaTrix,1,BAL vs HOU,BAL,FALSE,9.5,1
+HeckaTrix,1,IND vs JAX,JAX,FALSE,4.5,1
+HeckaTrix,1,PIT vs SF,PIT,TRUE,2.5,-1
+RoboMediaTV,1,DEN vs LV,DEN,FALSE,3.5,0
+RoboMediaTV,1,LAC vs MIA,LAC,FALSE,3,0
+RoboMediaTV,1,PIT vs SF,SF,FALSE,2.5,1
+TCremer22,1,SEA vs LAR,SEA,FALSE,4.5,0
+TCremer22,1,IND vs JAX,JAX,FALSE,4.5,1
+TCremer22,1,NE vs PHI,PHI,TRUE,4,2

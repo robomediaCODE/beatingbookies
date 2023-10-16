@@ -1,0 +1,43 @@
+/* Teams.css */
+
+/* Setting a dark background for the entire Teams component */
+body {
+    background-color: #1c1d26;
+    color: #f0f0f0; /* Setting the default text color to off-white */
+    font-family: Arial, sans-serif;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+li {
+    padding: 8px 16px;
+    border-bottom: 1px solid #e44c65; /* Using the light accent color for the border */
+    transition: background-color 0.3s ease; /* Smooth transition for hover effect */
+}
+
+li:hover {
+    background-color: #2a2b38; /* A slightly lighter shade of dark for hover */
+}
+
+h2 {
+    margin-bottom: 16px;
+    color: #e44c65; /* Using the light accent color for headings */
+}
+
+a {
+    color: #e44c65; /* Light color for links */
+    text-decoration: none;
+}
+
+a:hover {
+    color: #ff708a; /* A slightly lighter shade for hover effect */
+    text-decoration: underline;
+}
+
+a:visited {
+    color: #b83850; /* A darker shade for visited links */
+}
