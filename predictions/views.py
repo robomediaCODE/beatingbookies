@@ -230,21 +230,30 @@ def get_matchups(request, week):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_picks(request):
+    print("Debug: Received request data:", request.data)  # Debugging line
     user = request.user
-    week = request.data.get('week')
+    week_str = request.data.get('week_number')  # This will be 'Week 6', for example
+    week = int(week_str.split(' ')[1])  # Splits the string into ['Week', '6'] and then converts '6' to an integer
     picks = request.data.get('picks')
 
-    for matchup_id, choice in picks.items():
+    # Debug print statements
+    print("Debug: Received week number:", week)
+    print("Debug: Received picks:", picks)
+
+    for matchup_id, choice_data in picks.items():
+        prediction = choice_data.get('prediction')
+        is_locked = choice_data.get('is_locked', False)  # Default to False if not provided
         WeeklyPrediction.objects.update_or_create(
             user=user,
             week_number=week,
             matchup_id=matchup_id,
-            defaults={'prediction': choice},
+            defaults={
+                'prediction': prediction,
+                'is_locked': is_locked
+            },
         )
 
     return Response({'status': 'Picks submitted successfully'})
-
-
 
 
 

@@ -152,19 +152,23 @@ function UserDashboard() {
     
       const handleTeamSelection = (event) => {
         const selectedTeam = event.target.value;
+        console.log("Selected team in dropdown:", selectedTeam); // Debug log
     
         // Prepare your payload and send it to the backend
         const predictionData = {
             prediction: selectedTeam,
             is_locked: isLock
         };
-    
+        console.log("Prediction data:", predictionData); // Debug log
+        
         // Update local state to keep track of the prediction and lock status
         setPredictions({
             ...predictions,
             [selectedMatchupId]: predictionData
         });
-    };
+    
+        console.log("Updated predictions state:", predictions); // Debug log
+      };
 
     const handleWeekChange = (event) => {
         setSelectedWeek(event.target.value);
@@ -172,18 +176,20 @@ function UserDashboard() {
 
     const handleSubmitPicks = () => {
         const payload = {
-            week_number: selectedWeek,  // This should align with what the backend expects
-            picks: predictions,
+          week_number: selectedWeek,  // This should align with what the backend expects
+          picks: predictions,
         };
+    
+        console.log("Debug: Payload being sent in handleSubmitPicks:", payload);  // Debugging log
         
         api.post('/api/submitPicks/', payload)
-            .then(response => {
-                console.log("Successfully submitted picks:", response.data);
-            })
-            .catch(error => {
-                console.error("Error submitting picks:", error);
-            });
-    };
+          .then(response => {
+            console.log("Successfully submitted picks:", response.data);
+          })
+          .catch(error => {
+            console.error("Error submitting picks:", error);
+          });
+      };
     
     const handleNewMatchupChange = (event) => {
         setNewMatchup({
@@ -218,14 +224,46 @@ function UserDashboard() {
             });
       };
 
-    const handleConfirm = () => {
-        // Here, you can use `selectedTeam` and `isLock` to perform your actions
-        // ...
-        
+      const handleConfirm = () => {
+        // Prepare payload for the backend
+    
+        console.log('Current isLock state:', isLock); // Debug log here
+        console.log('homeTeam:', homeTeam);
+        console.log('awayTeam:', awayTeam);
+    
+        const selectedTeam = homeTeam; // Or awayTeam, based on what user selected in the modal
+    
+        const payload = {
+            week_number: selectedWeek,  // This should align with what the backend expects
+            picks: {
+                ...predictions,
+                [selectedMatchupId]: {
+                    prediction: selectedTeam,
+                    is_locked: isLock  // Use isLock directly
+                }
+            },
+        };
+    
+        // Validate payload before sending
+        if (!payload.week_number || !Object.keys(payload.picks).length) {
+            console.error('Missing required fields for prediction');
+            return;
+        }
+
+        console.log("Payload about to be sent to server:", payload);  // Debugging log
+
+        api.post('/api/submitPicks/', payload)
+            .then(response => {
+                console.log("Successfully submitted picks:", response.data);
+            })
+            .catch(error => {
+                console.error("Error submitting picks:", error);
+            });
+    
         // Reset isLock state and close the modal
         setIsLock(false);
         setShowModal(false);
-    };      
+    };    
       
     const handleAddMatchup = () => {
         // Debugging logs to verify data
@@ -250,24 +288,35 @@ function UserDashboard() {
             home_team_spread: parseFloat(newMatchup.home_team_spread),
         };
     
+        // Validate the data before sending
+        if (!matchupToSend.week_number || !matchupToSend.away_team || !matchupToSend.home_team) {
+            console.error("Validation Error: Missing required fields");
+            return;
+        }
+
+        console.log("Sending this data to server:", matchupToSend);
+
         api.post('/api/weeklymatchups/', matchupToSend)
             .then(response => {
+                console.log("Server responded with:", response.data);
                 // Successfully added the new matchup to the backend
                 setWeeklyMatchups([...weeklyMatchups, response.data]);
                 setNewMatchup({
-                  week_number: '',
-                  away_team: '',
-                  home_team: '',
-                  away_team_spread: '',
-                  home_team_spread: ''
+                    week_number: '',
+                    away_team: '',
+                    home_team: '',
+                    away_team_spread: '',
+                    home_team_spread: ''
                 });
             })
             .catch(error => {
                 // Handle any errors
                 console.error('Error adding new matchup:', error);
+                // If the error response has data, log that as well
+                if (error.response && error.response.data) {
+                    console.error('Server responded with:', error.response.data);
+                }
             });
-
-
 
     };
     

@@ -52,7 +52,7 @@ class WeeklyPrediction(models.Model):
     is_locked = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"User: {self.user} {self.matchup} - Pick - {self.prediction} - Lock - {self.is_locked}"
+        return f"{self.matchup} - User Pick - {self.prediction} - User Lock? - {self.is_locked}"
 
 class SideBet(models.Model):
     proposing_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='proposed_bets')
