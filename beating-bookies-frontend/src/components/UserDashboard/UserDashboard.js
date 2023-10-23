@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import api from '../../api';
 import { useNavigate } from 'react-router-dom';
 import jwtDecode from 'jwt-decode';
+import { ToastContainer, toast } from 'react-toastify';  // Importing react-toastify for notifications
+import 'react-toastify/dist/ReactToastify.css';  // Importing CSS for react-toastify
 
 const modalStyle = {
     position: 'fixed',
@@ -42,6 +44,7 @@ function UserDashboard() {
     const [homeTeam, setHomeTeamName] = useState('');  // State to hold the home team name
     const [awayTeam, setAwayTeamName] = useState('');  // State to hold the away team name
     const [isLock, setIsLock] = useState(false);  // State to hold if the prediction is a lock
+    const [showNotification, setShowNotification] = useState(false);  // State to control notification visibility
 
 
     // New useEffect for fetching the username
@@ -142,8 +145,13 @@ function UserDashboard() {
           setAwayTeamName(selectedMatchup.away_team_display);
       
           setShowModal(true);
+    
+          // Reset dropdown selection to force user to make a choice
+          if (predictions[selectedMatchupId]) {
+            delete predictions[selectedMatchupId].prediction;
+          }
         }
-      };
+    };
     
       const handleModalClose = () => {
         setShowModal(false);
@@ -160,7 +168,7 @@ function UserDashboard() {
             is_locked: isLock
         };
         console.log("Prediction data:", predictionData); // Debug log
-        
+    
         // Update local state to keep track of the prediction and lock status
         setPredictions({
             ...predictions,
@@ -168,7 +176,7 @@ function UserDashboard() {
         });
     
         console.log("Updated predictions state:", predictions); // Debug log
-      };
+    };    
 
     const handleWeekChange = (event) => {
         setSelectedWeek(event.target.value);
@@ -179,17 +187,23 @@ function UserDashboard() {
           week_number: selectedWeek,  // This should align with what the backend expects
           picks: predictions,
         };
-    
+      
         console.log("Debug: Payload being sent in handleSubmitPicks:", payload);  // Debugging log
         
         api.post('/api/submitPicks/', payload)
           .then(response => {
             console.log("Successfully submitted picks:", response.data);
+      
+            // Display toast to notify the user that the picks have been submitted
+            toast.success('Picks submitted successfully!');
           })
           .catch(error => {
             console.error("Error submitting picks:", error);
+      
+            // Display error toast
+            toast.error('Error submitting picks. Try Logging out and back in.');
           });
-      };
+      };      
     
     const handleNewMatchupChange = (event) => {
         setNewMatchup({
@@ -211,114 +225,128 @@ function UserDashboard() {
         return null;
       };
 
-    const handleDeleteMatchup = (matchupId) => {
+      const handleDeleteMatchup = (matchupId) => {
         // Make an API call to delete the matchup with the given ID
         api.delete(`/api/weeklymatchups/${matchupId}/`)
-            .then(response => {
-                // Remove the deleted matchup from the list
-                setWeeklyMatchups(weeklyMatchups.filter(matchup => matchup.id !== matchupId));
-            })
-            .catch(error => {
-                // Handle any errors
-                console.error('Error deleting matchup:', error);
-            });
+          .then(response => {
+            // Refetch the weekly matchups to update the list
+            api.get(`/api/weeklymatchups/?week=${selectedWeek}&use_abbreviation=true`)
+              .then(response => {
+                setWeeklyMatchups(response.data);
+              })
+              .catch(error => {
+                console.error("Error refetching weekly matchups:", error);
+              });
+      
+            // Display toast to notify the user that the matchup has been deleted
+            toast.success('Matchup deleted successfully!');
+          })
+          .catch(error => {
+            // Handle any errors
+            console.error('Error deleting matchup:', error);
+            toast.error('Error deleting matchup');  // Display error toast
+          });
       };
 
       const handleConfirm = () => {
-        // Prepare payload for the backend
-    
-        console.log('Current isLock state:', isLock); // Debug log here
+        // Debug logs for current state values
+        console.log('Current isLock state:', isLock);
         console.log('homeTeam:', homeTeam);
         console.log('awayTeam:', awayTeam);
-    
-        const selectedTeam = homeTeam; // Or awayTeam, based on what user selected in the modal
-    
-        const payload = {
-            week_number: selectedWeek,  // This should align with what the backend expects
-            picks: {
-                ...predictions,
-                [selectedMatchupId]: {
-                    prediction: selectedTeam,
-                    is_locked: isLock  // Use isLock directly
-                }
-            },
+      
+        // Use the prediction selected in the dropdown
+        const selectedTeam = predictions[selectedMatchupId]?.prediction ? predictions[selectedMatchupId]?.prediction : null;
+      
+        // Prepare new picks
+        const newPicks = {
+            ...predictions,
+            [selectedMatchupId]: {
+                prediction: selectedTeam,
+                is_locked: isLock  // Use the current isLock state
+            }
         };
-    
-        // Validate payload before sending
-        if (!payload.week_number || !Object.keys(payload.picks).length) {
-            console.error('Missing required fields for prediction');
-            return;
-        }
-
-        console.log("Payload about to be sent to server:", payload);  // Debugging log
-
-        api.post('/api/submitPicks/', payload)
-            .then(response => {
-                console.log("Successfully submitted picks:", response.data);
-            })
-            .catch(error => {
-                console.error("Error submitting picks:", error);
-            });
-    
+      
+        // Debug log for the new picks
+        console.log("New picks to be set:", newPicks);
+      
+        // Update local state to keep track of the prediction and lock status
+        setPredictions(newPicks);
+      
         // Reset isLock state and close the modal
         setIsLock(false);
         setShowModal(false);
-    };    
       
-    const handleAddMatchup = () => {
+        // New line: Display toast to notify the user that their prediction has been saved
+        toast.success('Prediction saved successfully!');
+      };      
+    
+      
+      const handleAddMatchup = () => {
         // Debugging logs to verify data
         console.log("Teams:", teams);
         console.log("New Matchup:", newMatchup);
-    
+      
         // Ensure you're getting valid IDs for teams
         const awayTeam = teams.find(t => t.abbreviation === newMatchup.away_team);
         const homeTeam = teams.find(t => t.abbreviation === newMatchup.home_team);
-    
+      
         if (!awayTeam || !homeTeam) {
-            console.error("Invalid team abbreviation provided");
-            return;
+          console.error("Invalid team abbreviation provided");
+          return;
         }
-    
+      
         const matchupToSend = {
-            ...newMatchup,
-            week_number: parseInt(newMatchup.week_number.split(' ')[1]), 
-            away_team: awayTeam.id, 
-            home_team: homeTeam.id,  
-            away_team_spread: parseFloat(newMatchup.away_team_spread),
-            home_team_spread: parseFloat(newMatchup.home_team_spread),
+          ...newMatchup,
+          week_number: parseInt(newMatchup.week_number.split(' ')[1]), 
+          away_team: awayTeam.id, 
+          home_team: homeTeam.id,  
+          away_team_spread: parseFloat(newMatchup.away_team_spread),
+          home_team_spread: parseFloat(newMatchup.home_team_spread),
         };
-    
+      
         // Validate the data before sending
         if (!matchupToSend.week_number || !matchupToSend.away_team || !matchupToSend.home_team) {
-            console.error("Validation Error: Missing required fields");
-            return;
+          console.error("Validation Error: Missing required fields");
+          return;
         }
-
+      
         console.log("Sending this data to server:", matchupToSend);
-
+      
         api.post('/api/weeklymatchups/', matchupToSend)
             .then(response => {
-                console.log("Server responded with:", response.data);
-                // Successfully added the new matchup to the backend
-                setWeeklyMatchups([...weeklyMatchups, response.data]);
-                setNewMatchup({
-                    week_number: '',
-                    away_team: '',
-                    home_team: '',
-                    away_team_spread: '',
-                    home_team_spread: ''
+            console.log("Server responded with:", response.data);
+            
+            // Refetch the weekly matchups to update the list
+            api.get(`/api/weeklymatchups/?week=${selectedWeek}&use_abbreviation=true`)
+                .then(response => {
+                setWeeklyMatchups(response.data);
+                })
+                .catch(error => {
+                console.error("Error refetching weekly matchups:", error);
                 });
-            })
-            .catch(error => {
-                // Handle any errors
-                console.error('Error adding new matchup:', error);
-                // If the error response has data, log that as well
-                if (error.response && error.response.data) {
-                    console.error('Server responded with:', error.response.data);
-                }
+        
+            // Reset the form fields
+            setNewMatchup({
+                week_number: '',
+                away_team: '',
+                home_team: '',
+                away_team_spread: '',
+                home_team_spread: ''
             });
-
-    };
+        
+            // Display toast to notify the user that the matchup has been added
+            toast.success('Matchup added successfully!');
+        })
+          .catch(error => {
+            // Handle any errors
+            console.error('Error adding new matchup:', error);
+            // If the error response has data, log that as well
+            if (error.response && error.response.data) {
+              console.error('Server responded with:', error.response.data);
+            }
+          });
+      };
+    
     
 
     
@@ -326,9 +354,10 @@ function UserDashboard() {
 //----------------------------------------------------------------------------------------------------
     return (
         <div>
-        <h2>User Dashboard</h2>
+            <ToastContainer />
+            <h2>User Dashboard</h2>
 
-        <div>
+            <div>
             <h3>Add New Matchup</h3>
             <select
             name="week_number"
@@ -379,6 +408,7 @@ function UserDashboard() {
             <p />
         </div>
 
+
         <div>
             <label>Select Week: </label>
             <select value={selectedWeek} onChange={handleWeekChange}>
@@ -396,7 +426,7 @@ function UserDashboard() {
                 <div style={overlayStyle}></div>
                 <div style={modalStyle}>
                 <h3>Select a team</h3>
-                <select onChange={handleTeamSelection}>
+                <select onChange={handleTeamSelection} value={predictions[selectedMatchupId]?.prediction || ''}>
                     <option value="" disabled>Select Team</option>
                     <option value={homeTeam}>{homeTeam}</option>
                     <option value={awayTeam}>{awayTeam}</option>

@@ -128,16 +128,21 @@ def upload_profile_picture(request):
 def submit_individual_pick(request):
     user = request.user
     matchup_id = request.data.get('matchupId')
-    prediction = request.data.get('teamChoice')
+    team_abbr = request.data.get('teamChoice')  # Team abbreviation from frontend
     is_locked = request.data.get('isLock')
     
+    # Retrieve the corresponding WeeklyMatchup object
     matchup = get_object_or_404(WeeklyMatchup, id=matchup_id)
-
+    
+    # Convert the team abbreviation to "Home" or "Away"
+    prediction = "Home" if matchup.home_team_abbr == team_abbr else "Away"
+    
+    # The rest of the code remains unchanged
     obj, created = WeeklyPrediction.objects.update_or_create(
         user=user,
         matchup=matchup,
         defaults={
-            'prediction': prediction,
+            'prediction': prediction,  # Use the converted value
             'is_locked': is_locked
         },
     )
@@ -146,6 +151,7 @@ def submit_individual_pick(request):
         return Response({'status': 'Pick created successfully'})
     else:
         return Response({'status': 'Pick updated successfully'})
+
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
@@ -236,13 +242,29 @@ def submit_picks(request):
     week = int(week_str.split(' ')[1])  # Splits the string into ['Week', '6'] and then converts '6' to an integer
     picks = request.data.get('picks')
 
+    # Retrieve all matchups for the week
+    matchups = WeeklyMatchup.objects.filter(week_number=week)
+
+    # Create a lookup dictionary for converting abbreviations to Home/Away
+    abbr_to_home_away = {}
+    for matchup in matchups:
+        home_team = Team.objects.get(id=matchup.home_team_id)
+        away_team = Team.objects.get(id=matchup.away_team_id)
+        abbr_to_home_away[home_team.abbreviation] = "Home"
+        abbr_to_home_away[away_team.abbreviation] = "Away"
+
     # Debug print statements
     print("Debug: Received week number:", week)
     print("Debug: Received picks:", picks)
 
     for matchup_id, choice_data in picks.items():
-        prediction = choice_data.get('prediction')
+        team_abbr = choice_data.get('prediction')
         is_locked = choice_data.get('is_locked', False)  # Default to False if not provided
+
+        # Convert the team abbreviation to Home or Away
+        prediction = abbr_to_home_away.get(team_abbr, "Invalid")
+
+        # Update or create the WeeklyPrediction object
         WeeklyPrediction.objects.update_or_create(
             user=user,
             week_number=week,
@@ -254,7 +276,6 @@ def submit_picks(request):
         )
 
     return Response({'status': 'Picks submitted successfully'})
-
 
 
 # Serializer View Code 
