@@ -235,17 +235,26 @@ def get_matchups(request, week):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def submit_picks(request):
-    print("Debug: Received request data:", request.data)  # Debugging line
+def submit_picks(request):    
     user = request.user
     week_str = request.data.get('week_number')  # This will be 'Week 6', for example
     week = int(week_str.split(' ')[1])  # Splits the string into ['Week', '6'] and then converts '6' to an integer
-    picks = request.data.get('picks')
+    new_picks = request.data.get('picks')
+
+    print("Received new picks:", new_picks)
+
+    # Validation: Check if there's already a lock or if more than 3 picks are made
+    existing_picks = WeeklyPrediction.objects.filter(week_number=week, user=user)
+    existing_locks = existing_picks.filter(is_locked=True)
+    
+    new_locks = [pick for pick_id, pick in new_picks.items() if pick.get('is_locked', False)]
+    if len(existing_picks) + len(new_picks) > 3:
+        return Response({"error": "You can make only 3 picks per week"}, status=status.HTTP_400_BAD_REQUEST)
+    if len(existing_locks) + len(new_locks) > 1:
+        return Response({"error": "Only one lock is allowed per week"}, status=status.HTTP_400_BAD_REQUEST)
 
     # Retrieve all matchups for the week
     matchups = WeeklyMatchup.objects.filter(week_number=week)
-
-    # Create a lookup dictionary for converting abbreviations to Home/Away
     abbr_to_home_away = {}
     for matchup in matchups:
         home_team = Team.objects.get(id=matchup.home_team_id)
@@ -253,18 +262,12 @@ def submit_picks(request):
         abbr_to_home_away[home_team.abbreviation] = "Home"
         abbr_to_home_away[away_team.abbreviation] = "Away"
 
-    # Debug print statements
-    print("Debug: Received week number:", week)
-    print("Debug: Received picks:", picks)
-
-    for matchup_id, choice_data in picks.items():
+    for matchup_id, choice_data in new_picks.items():
+        print(f"Processing matchup_id: {matchup_id}, choice_data: {choice_data}")
         team_abbr = choice_data.get('prediction')
         is_locked = choice_data.get('is_locked', False)  # Default to False if not provided
-
-        # Convert the team abbreviation to Home or Away
         prediction = abbr_to_home_away.get(team_abbr, "Invalid")
 
-        # Update or create the WeeklyPrediction object
         WeeklyPrediction.objects.update_or_create(
             user=user,
             week_number=week,
@@ -348,8 +351,6 @@ class WeeklyMatchupListView(generics.ListCreateAPIView):
             print(f"Serializer errors: {serializer.errors}")  # Debugging line
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-
 class WeeklyMatchupDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = WeeklyMatchup.objects.all()
     serializer_class = WeeklyMatchupSerializer
@@ -399,3 +400,17 @@ class PostSeasonPredictionListView(generics.ListCreateAPIView):
 class PostSeasonPredictionDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = PostSeasonPrediction.objects.all()
     serializer_class = PostSeasonPredictionSerializer
+
+class ExistingPicksListView(generics.ListAPIView):
+    serializer_class = WeeklyPredictionSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        week_str = self.request.query_params.get('week', None)
+
+        # Validate and extract the week number
+        if week_str is None or not week_str.startswith('Week '):
+            return WeeklyPrediction.objects.none()  # Return an empty queryset or handle error
+        week = int(week_str.split(' ')[1])  # Extract the week number and convert to int
+
+        return WeeklyPrediction.objects.filter(week_number=week, user=user)

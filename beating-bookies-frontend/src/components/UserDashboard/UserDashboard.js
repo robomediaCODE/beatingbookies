@@ -46,7 +46,6 @@ function UserDashboard() {
     const [isLock, setIsLock] = useState(false);  // State to hold if the prediction is a lock
     const [showNotification, setShowNotification] = useState(false);  // State to control notification visibility
 
-
     // New useEffect for fetching the username
     useEffect(() => {
         const userId = extractUserIdFromToken();
@@ -127,7 +126,7 @@ function UserDashboard() {
                 });
         }
     }, [selectedWeek]);  // Dependency array now includes selectedWeek
-
+    
     const weekOptions = [
         "Week 1", "Week 2", "Week 3", "Week 4", "Week 5",
         "Week 6", "Week 7", "Week 8", "Week 9", "Week 10",
@@ -153,57 +152,65 @@ function UserDashboard() {
         }
     };
     
-      const handleModalClose = () => {
-        setShowModal(false);
-        setIsLock(false);  // Reset the lock state when modal is closed
+    const handleModalClose = () => {
+      setShowModal(false);
+      setIsLock(false);  // Reset the lock state when modal is closed
+    };
+  
+    const handleTeamSelection = (event) => {
+      const selectedTeam = event.target.value;
+      console.log("Selected team in dropdown:", selectedTeam);
+    
+      const predictionData = {
+        prediction: selectedTeam,
+        is_locked: isLock
       };
+
+      console.log("Prediction data before setPredictions:", predictionData);
     
-      const handleTeamSelection = (event) => {
-        const selectedTeam = event.target.value;
-        console.log("Selected team in dropdown:", selectedTeam); // Debug log
-    
-        // Prepare your payload and send it to the backend
-        const predictionData = {
-            prediction: selectedTeam,
-            is_locked: isLock
+      setPredictions(prevPredictions => {
+        console.log("Previous predictions state:", prevPredictions);
+        const updatedPredictions = {
+          ...prevPredictions,
+          [selectedMatchupId]: predictionData
         };
-        console.log("Prediction data:", predictionData); // Debug log
-    
-        // Update local state to keep track of the prediction and lock status
-        setPredictions({
-            ...predictions,
-            [selectedMatchupId]: predictionData
-        });
-    
-        console.log("Updated predictions state:", predictions); // Debug log
-    };    
+        console.log("Updated predictions state:", updatedPredictions);
+        return updatedPredictions;
+      });
+    };
 
     const handleWeekChange = (event) => {
         setSelectedWeek(event.target.value);
     };
 
+    const fetchExistingPicks = async (week) => {
+      try {
+        const response = await api.get(`/api/existingPicks/?week=${week}`);
+        return response.data;
+      } catch (error) {
+        console.error("Error fetching existing picks:", error);
+      }
+      return null;
+    };
+
     const handleSubmitPicks = () => {
-        const payload = {
-          week_number: selectedWeek,  // This should align with what the backend expects
-          picks: predictions,
-        };
-      
-        console.log("Debug: Payload being sent in handleSubmitPicks:", payload);  // Debugging log
-        
-        api.post('/api/submitPicks/', payload)
-          .then(response => {
-            console.log("Successfully submitted picks:", response.data);
-      
-            // Display toast to notify the user that the picks have been submitted
-            toast.success('Picks submitted successfully!');
-          })
-          .catch(error => {
-            console.error("Error submitting picks:", error);
-      
-            // Display error toast
-            toast.error('Error submitting picks. Try Logging out and back in.');
-          });
-      };      
+      const payload = {
+        week_number: selectedWeek,
+        picks: predictions,
+      };
+    
+      api.post('/api/submitPicks/', payload)
+        .then(response => {
+          toast.success('Picks submitted successfully!');
+        })
+        .catch(error => {
+          if (error.response && error.response.status === 400) {
+            toast.error(error.response.data.error);
+          } else {
+            toast.error('Error submitting picks. Try logging out and back in.');
+          }
+        });
+    };   
     
     const handleNewMatchupChange = (event) => {
         setNewMatchup({
@@ -248,39 +255,62 @@ function UserDashboard() {
           });
       };
 
-      const handleConfirm = () => {
+      // Add this useEffect inside your component
+      useEffect(() => {
+        console.log("Current predictions state after Confirm (useEffect):", predictions);
+      }, [predictions]);
+
+      const handleConfirm = async () => {
         // Debug logs for current state values
+        console.log("Current predictions state before Confirm:", predictions);
         console.log('Current isLock state:', isLock);
         console.log('homeTeam:', homeTeam);
         console.log('awayTeam:', awayTeam);
       
-        // Use the prediction selected in the dropdown
-        const selectedTeam = predictions[selectedMatchupId]?.prediction ? predictions[selectedMatchupId]?.prediction : null;
+        // Fetch existing picks for the selected week
+        const existingPicks = await fetchExistingPicks(selectedWeek);
+        
+        // Check if there's already a lock
+        const existingLock = existingPicks?.some(pick => pick.is_locked);
+        if (isLock && existingLock) {
+          toast.error('Only one lock is allowed per week.');
+          return;
+        }
+        
+        // Check for the total number of picks including existing ones
+        const totalExistingPicks = existingPicks?.length || 0;
+        const totalNewPicks = Object.keys(predictions).length;
+        if ((totalExistingPicks + totalNewPicks) > 3) {
+          toast.error('You can make only 3 picks per week.');
+          return;
+        }
       
-        // Prepare new picks
-        const newPicks = {
-            ...predictions,
-            [selectedMatchupId]: {
-                prediction: selectedTeam,
-                is_locked: isLock  // Use the current isLock state
-            }
+        // Debug log for existing data for this matchup
+        console.log("Existing data for this matchup:", predictions[selectedMatchupId]);
+      
+        // Prepare a temporary object to hold the new state
+        const newPredictions = {
+          ...predictions,
+          [selectedMatchupId]: {
+            ...(predictions[selectedMatchupId] || {}), // Preserve existing data
+            is_locked: isLock  // Update only the is_locked field
+          }
         };
       
         // Debug log for the new picks
-        console.log("New picks to be set:", newPicks);
+        console.log("New picks to be set:", newPredictions);
       
         // Update local state to keep track of the prediction and lock status
-        setPredictions(newPicks);
+        setPredictions(newPredictions);
       
         // Reset isLock state and close the modal
         setIsLock(false);
         setShowModal(false);
-      
-        // New line: Display toast to notify the user that their prediction has been saved
+        
+        // Display toast to notify the user that their prediction has been saved
         toast.success('Prediction saved successfully!');
-      };      
-    
-      
+      };   
+
       const handleAddMatchup = () => {
         // Debugging logs to verify data
         console.log("Teams:", teams);

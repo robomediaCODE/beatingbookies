@@ -46,5 +46,7 @@ urlpatterns = [
     
     path('submitPicks/', views.submit_picks, name='submit-picks'),
 
+    path('existingPicks/', views.ExistingPicksListView.as_view(), name='existing-picks'),
+
     # Add more paths as you define more views
 ]
