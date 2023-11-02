@@ -24,8 +24,8 @@ Webapp used for the Beating Bookies comptetition. A list of rules and general st
 4. Clone the Git Repository:
     -Open a command prompt on your new system.
     -Navigate to the directory where you want to clone the project.
-    -Use the git clone command to clone the repository. For example, if your project is hosted on GitHub and the repository URL is https://github.com/yourusername/yourproject.git, you would run
-        git clone https://github.com/yourusername/yourproject
+    -Use the git clone command to clone the repository. For example, if your project is hosted on GitHub and the repository URL is https://github.com/robomediaCODE/beatingbookies.git, you would run
+        git clone https://github.com/robomediaCODE/beatingbookies
     
 5. Create a Virtual Python Environment
     -Navigate to your project's directory.
