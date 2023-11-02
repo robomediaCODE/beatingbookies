@@ -123,36 +123,6 @@ def upload_profile_picture(request):
         return Response({'message': 'Profile picture updated successfully!', 'profile_picture': request.user.profile_picture.url}, status=200)
     return Response({'message': 'No profile picture uploaded.'}, status=400)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def submit_individual_pick(request):
-    user = request.user
-    matchup_id = request.data.get('matchupId')
-    team_abbr = request.data.get('teamChoice')  # Team abbreviation from frontend
-    is_locked = request.data.get('isLock')
-    
-    # Retrieve the corresponding WeeklyMatchup object
-    matchup = get_object_or_404(WeeklyMatchup, id=matchup_id)
-    
-    # Convert the team abbreviation to "Home" or "Away"
-    prediction = "Home" if matchup.home_team_abbr == team_abbr else "Away"
-    
-    # The rest of the code remains unchanged
-    obj, created = WeeklyPrediction.objects.update_or_create(
-        user=user,
-        matchup=matchup,
-        defaults={
-            'prediction': prediction,  # Use the converted value
-            'is_locked': is_locked
-        },
-    )
-
-    if created:
-        return Response({'status': 'Pick created successfully'})
-    else:
-        return Response({'status': 'Pick updated successfully'})
-
-
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_profile_picture(request):
