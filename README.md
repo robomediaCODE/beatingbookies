@@ -1,7 +1,7 @@
 # Beating Bookies
 Webapp used for the Beating Bookies comptetition. A list of rules and general structure of the competition and what the general guidelines were used when creating the project can be found in the rules PDF in the repository.
 
-##//Create New instance from GitHub\\
+## Create New instance from GitHub
 1. Install Git: First, ensure that Git is installed on your new system. 
     - You can download the Git installer for Windows from the official website (https://git-scm.com/download/win) and follow the installation instructions.
 
@@ -59,5 +59,5 @@ Webapp used for the Beating Bookies comptetition. A list of rules and general st
     - If file was not created, create a file called '.gitignore' and add this to the file:
 
         ```*```
-        
+
     - This will ensure you do not push the virtual environment folder to the github project. 
